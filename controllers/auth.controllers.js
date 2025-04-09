@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const User = require("../models/user.model");
+const {verifyPassword} = require("../middlewares/auth")
 
 async function signup(req, res) {
   try {
@@ -40,6 +41,43 @@ async function signup(req, res) {
   }
 }
 
+async function signin(req, res) {
+  try{
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+    
+    const user = await User.findOne({
+      where: {
+        username,
+      },
+    });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid username/email or password." });
+    }
+
+    const isPasswordValid = await verifyPassword(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid username/email or password." });
+    }
+    const userData = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      createdAt: user.createdAt,
+    };
+
+    res.status(200).json({ message: "Login successful.", user: userData });
+
+  } catch (error) {
+    console.error("Signin Error:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
 module.exports = {
   signup,
+  signin
 };
